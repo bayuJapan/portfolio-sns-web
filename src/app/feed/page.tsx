@@ -10,7 +10,7 @@ export default async function Page() {
   if (error) return <div className="py-8">Error: {error.message}</div>;
   return (
     <div className="mx-auto max-w-2xl py-8">
-      <h1 className="text-xl font-semibold mb-4">Feed</h1>
+      <h1 className="text-xl font-semibold mb-4">Feed (SSR)</h1>
       <div className="space-y-4">
         {(posts ?? []).map((p) => (
           <div key={p.id} className="rounded border bg-white p-4">
