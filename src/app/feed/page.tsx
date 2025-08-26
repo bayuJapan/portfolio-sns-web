@@ -1,12 +1,7 @@
 import { supabaseServer } from "../../lib/supabaseServer";
 export const dynamic = "force-dynamic";
 type Author = { id: string; handle: string; display_name: string; is_verified: boolean };
-type Post = {
-  id: string;
-  created_at: string;
-  text: string;
-  users: Author | Author[] | null;
-};
+type Post = { id: string; created_at: string; text: string; users: Author | Author[] | null; };
 export default async function Page() {
   const sb = supabaseServer();
   const { data, error } = await sb
