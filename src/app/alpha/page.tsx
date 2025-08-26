@@ -3,8 +3,9 @@ import PortfolioPie from "@/components/PortfolioPie";
 
 export const dynamic = "force-dynamic";
 
-type User = { id: string; handle: string; display_name: string };
-type Line = { asset_class: string; pct: number };
+type UserRow = { id: string; handle: string; display_name: string };
+type SnapRow = { snapshot_id: string; ts: string; total_value_jpy: string | number };
+type LineRow = { asset_class: string; pct: number };
 
 export default async function Page() {
   const sb = supabaseServer();
@@ -13,7 +14,7 @@ export default async function Page() {
     .from("users")
     .select("id, handle, display_name")
     .eq("handle", "alpha")
-    .single();
+    .single<UserRow>();
 
   if (uerr || !userRow) {
     return <div className="py-8">ユーザー alpha が見つかりません</div>;
@@ -23,19 +24,19 @@ export default async function Page() {
     .from("latest_snapshot")
     .select("snapshot_id, ts, total_value_jpy")
     .eq("user_id", userRow.id)
-    .single();
+    .single<SnapRow>();
 
   if (serr || !snap) {
     return <div className="py-8">@alpha の最新スナップショットがありません</div>;
   }
 
-  const { data: lines, error: lerr } = await sb
+  const { data: lines, error: _lerr } = await sb
     .from("portfolio_lines")
     .select("asset_class, pct")
-    .eq("snapshot_id", snap.snapshot_id);
+    .eq("snapshot_id", snap.snapshot_id) as { data: LineRow[] | null; error: null };
 
-  const pieData: Line[] = (lines ?? []).map((l: any) => ({
-    asset_class: String(l.asset_class),
+  const pieData: LineRow[] = (lines ?? []).map((l) => ({
+    asset_class: l.asset_class,
     pct: Number(l.pct),
   }));
 
