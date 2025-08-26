@@ -1,52 +1,51 @@
-import { supabaseServer } from "../../lib/supabaseServer";
-import PortfolioPie from "../../components/PortfolioPie";
+import { supabaseServer } from "@/lib/supabaseServer";
+import PortfolioPie from "@/components/PortfolioPie";
+
 export const dynamic = "force-dynamic";
 
-type Privacy = "hidden" | "approx" | "exact";
-type User = { id: string; handle: string; display_name: string; privacy_asset_amount: Privacy };
-type Snap = { snapshot_id: string; total_value_jpy: number };
-type LineJA = { asset_class_ja: string; pct: number };
-
-function formatJPY(n:number){
-  return new Intl.NumberFormat("ja-JP",{style:"currency",currency:"JPY",maximumFractionDigits:0}).format(n);
-}
+type User = { id: string; handle: string; display_name: string };
+type Line = { asset_class: string; pct: number };
 
 export default async function Page() {
   const sb = supabaseServer();
 
-  const { data: user } = await sb
+  const { data: userRow, error: uerr } = await sb
     .from("users")
-    .select("id,handle,display_name,privacy_asset_amount")
-    .eq("handle","alpha")
-    .single<User>();
+    .select("id, handle, display_name")
+    .eq("handle", "alpha")
+    .single();
 
-  if (!user) return <div className="py-8">not found</div>;
+  if (uerr || !userRow) {
+    return <div className="py-8">ユーザー alpha が見つかりません</div>;
+  }
 
-  const { data: snap } = await sb
+  const { data: snap, error: serr } = await sb
     .from("latest_snapshot")
-    .select("snapshot_id,total_value_jpy")
-    .eq("user_id", user.id)
-    .single<Snap>();
+    .select("snapshot_id, ts, total_value_jpy")
+    .eq("user_id", userRow.id)
+    .single();
 
-  const { data: lines } = await sb
-    .from("portfolio_lines_ja")
-    .select("asset_class_ja,pct")
-    .eq("snapshot_id", snap?.snapshot_id);
+  if (serr || !snap) {
+    return <div className="py-8">@alpha の最新スナップショットがありません</div>;
+  }
 
-  const approx = user.privacy_asset_amount !== "exact";
-  const pieData = ((lines ?? []) as LineJA[]).map(l => ({
-    asset_class: l.asset_class_ja,
+  const { data: lines, error: lerr } = await sb
+    .from("portfolio_lines")
+    .select("asset_class, pct")
+    .eq("snapshot_id", snap.snapshot_id);
+
+  const pieData: Line[] = (lines ?? []).map((l: any) => ({
+    asset_class: String(l.asset_class),
     pct: Number(l.pct),
   }));
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 mx-auto max-w-4xl py-8">
+    <div className="mx-auto max-w-4xl py-8 grid gap-6 md:grid-cols-2">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">
-          {user.display_name} <span className="text-neutral-500">@{user.handle}</span>
+          {userRow.display_name} <span className="text-neutral-500">@{userRow.handle}</span>
         </h1>
-        <div className="text-lg">{formatJPY(Number(snap?.total_value_jpy ?? 0))}</div>
-        <div className="text-sm text-neutral-500">{approx ? "概算（100万円単位）" : "正確表示"}</div>
+        <div className="text-sm text-neutral-500">{new Date(snap.ts).toLocaleString("ja-JP")}</div>
       </div>
       <PortfolioPie lines={pieData} />
     </div>
